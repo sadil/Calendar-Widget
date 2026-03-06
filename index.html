@@ -4,8 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Agenda</title>
+    
+    <!-- PWA App Icons (Flaticon: Schedule 2672348) -->
+    <link rel="icon" type="image/png" href="https://cdn-icons-png.flaticon.com/512/2672/2672348.png">
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2672/2672348.png">
+    
     <!-- Dynamic Manifest injected via JS below to fulfill 1-file constraint -->
     <link id="manifest-link" rel="manifest" href="">
+    
     <!-- Tailwind CSS (CDN) -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -34,8 +40,9 @@
             <button id="today-btn" class="p-2 rounded-full text-gray-500 hover:text-blue-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-gray-800 transition-colors outline-none" title="Go to Today">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
             </button>
-            <button id="update-btn" class="p-2 rounded-full text-gray-500 hover:text-blue-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-gray-800 transition-colors outline-none" title="Update App">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+            <button id="update-btn" class="p-2 rounded-full text-gray-500 hover:text-blue-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-gray-800 transition-colors outline-none disabled:opacity-50" title="Update App">
+                <!-- ID added to SVG for spin animation -->
+                <svg id="update-icon" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
             </button>
             <button id="theme-toggle" class="p-2 text-xl rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors outline-none" title="Toggle Mode">
                 🌗
@@ -44,7 +51,6 @@
     </header>
 
     <!-- Main Content Area (Scrollable) -->
-    <!-- This container natively starts exactly below the header, making 'top-0' the perfect sticky boundary -->
     <main class="flex-1 overflow-y-auto w-full md:max-w-2xl mx-auto relative pb-20 scroll-smooth">
         
         <!-- Login View -->
@@ -83,6 +89,7 @@
         /** CONFIGURATION */
         const GAS_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbzqAQbxq9PJO_XRyvIQkpBlU91185tdoFOJBb6SPyYMDMg804kZBgMeG3GiL8aV3Y4f/exec';
         const APP_TIMEZONE = 'Asia/Singapore';
+        const ICON_URL = 'https://cdn-icons-png.flaticon.com/512/2672/2672348.png'; // Assigned Flaticon ID
 
         // DOM Elements
         const el = {
@@ -90,6 +97,7 @@
             headerActions: document.getElementById('header-actions'),
             themeToggle: document.getElementById('theme-toggle'),
             updateBtn: document.getElementById('update-btn'),
+            updateIcon: document.getElementById('update-icon'),
             todayBtn: document.getElementById('today-btn'),
             loginView: document.getElementById('login-view'),
             agendaView: document.getElementById('agenda-view'),
@@ -115,7 +123,10 @@
                 display: "standalone",
                 background_color: el.html.classList.contains('dark') ? "#111827" : "#f9fafb",
                 theme_color: "#3b82f6",
-                icons:[{ src: "data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%233b82f6'%3E%3Cpath d='M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10z'/%3E%3C/svg%3E", sizes: "192x192", type: "image/svg+xml" }]
+                icons:[
+                    { src: ICON_URL, sizes: "192x192", type: "image/png" },
+                    { src: ICON_URL, sizes: "512x512", type: "image/png" }
+                ]
             };
             el.manifestLink.href = 'data:application/manifest+json;charset=utf-8,' + encodeURIComponent(JSON.stringify(manifest));
         };
@@ -221,7 +232,7 @@
                 const mainRect = el.mainScrollArea.getBoundingClientRect();
                 const targetRect = targetEl.getBoundingClientRect();
                 
-                // If targeting an event, offset by ~34px so the sticky Date Header doesn't cover it
+                // Offset by ~34px so the sticky Date Header doesn't cover the event
                 const isEvent = targetEl.hasAttribute('data-date');
                 const offset = isEvent ? -34 : 0; 
                 
@@ -246,10 +257,13 @@
             }
         }, 60000);
 
+        // UI Header Handlers
         el.todayBtn.addEventListener('click', () => {
             isUserScrolling = false;
             scrollToCurrent();
         });
+        
+        // --- Fixed Update Button Bind ---
         el.updateBtn.addEventListener('click', () => fetchEvents(true));
 
 
@@ -337,12 +351,22 @@
             const pwd = localStorage.getItem('auth_pwd');
             if (!pwd) return;
 
-            if (showLoadingUI && el.eventsContainer.innerHTML === '') {
-                el.loader.classList.remove('hidden');
+            if (showLoadingUI) {
+                // UI Visual Feedback Fix
+                el.updateBtn.disabled = true;
+                el.updateIcon.classList.add('animate-spin'); 
+
+                if (el.eventsContainer.innerHTML === '') {
+                    el.loader.classList.remove('hidden');
+                }
             }
 
             const res = await callAPI('get_events', pwd);
+            
+            // Revert UI Loading states
             el.loader.classList.add('hidden');
+            el.updateIcon.classList.remove('animate-spin');
+            el.updateBtn.disabled = false;
 
             if (res.status === 'success') {
                 localStorage.setItem('cached_events', JSON.stringify(res.data));
@@ -397,8 +421,6 @@
                     return a.startTime - b.startTime;
                 });
 
-                // Top-0 creates perfectly flush sticky positioning inside the scrollable container.
-                // Solid, minimal background to prevent overlap bleed and "glow".
                 html += `
                 <div id="${sectionId}" class="sticky top-0 z-10 bg-gray-100 dark:bg-gray-800 px-4 py-1.5 border-b border-gray-200 dark:border-gray-700 transition-colors">
                     <span class="text-xs font-bold uppercase tracking-widest text-blue-600 dark:text-blue-400">${data.headerStr}</span>
