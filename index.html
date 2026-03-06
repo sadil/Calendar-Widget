@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Agenda</title>
+    <!-- Dynamic Manifest injected via JS below to fulfill 1-file constraint -->
+    <link id="manifest-link" rel="manifest" href="">
+    <!-- Tailwind CSS (CDN) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: { extend: { colors: { customBgLight: '#f9fafb', customBgDark: '#111827' } } }
+        }
+    </script>
+    <style>
+        /* Minimalist widget scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(156, 163, 175, 0.4); border-radius: 4px; }
+        .dark ::-webkit-scrollbar-thumb { background: rgba(75, 85, 99, 0.5); }
+        body { -webkit-tap-highlight-color: transparent; }
+    </style>
+</head>
+<body class="bg-customBgLight text-gray-900 dark:bg-customBgDark dark:text-gray-100 transition-colors duration-200 antialiased font-sans flex flex-col h-screen overflow-hidden">
+
+    <!-- Header -->
+    <header class="flex-none sticky top-0 z-20 backdrop-blur-md bg-white/80 dark:bg-gray-900/80 border-b border-gray-200 dark:border-gray-800 px-4 py-3 flex justify-between items-center shadow-sm w-full md:max-w-2xl mx-auto">
+        <h1 class="text-xl font-bold tracking-tight">Agenda</h1>
+        <div class="flex items-center space-x-3">
+            <button id="update-btn" class="px-3 py-1.5 text-sm font-semibold rounded-lg bg-blue-100 text-blue-700 hover:bg-blue-200 dark:bg-blue-900/40 dark:text-blue-300 dark:hover:bg-blue-900/60 transition-colors flex items-center shadow-sm">
+                <svg class="w-4 h-4 mr-1 hidden sm:block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                Update App
+            </button>
+            <button id="theme-toggle" class="p-1.5 text-xl rounded-lg bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 transition-colors shadow-sm" title="Toggle Mode">
+                🌗
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Content Area (Scrollable) -->
+    <main class="flex-1 overflow-y-auto w-full md:max-w-2xl mx-auto relative pb-20">
+        
+        <!-- Login View -->
+        <div id="login-view" class="mt-20 px-4 w-full max-w-sm mx-auto hidden">
+            <div class="p-6 bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700">
+                <h2 class="text-2xl font-bold mb-6 text-center text-gray-800 dark:text-white">Secure Access</h2>
+                <!-- Error Alert ABOVE password field -->
+                <div id="login-error" class="hidden mb-4 text-sm font-medium text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 px-3 py-2.5 rounded-lg border border-red-100 dark:border-red-900/30"></div>
+                
+                <div class="relative mb-5">
+                    <input type="password" id="password-input" class="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 pr-12 transition-colors text-gray-900 dark:text-gray-100" placeholder="Enter password">
+                    <button id="toggle-password" class="absolute inset-y-0 right-0 px-3 flex items-center text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 outline-none">
+                        <!-- Eye Show -->
+                        <svg id="eye-show" class="w-5 h-5 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+                        <!-- Eye Hide -->
+                        <svg id="eye-hide" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"></path></svg>
+                    </button>
+                </div>
+                <button id="login-btn" class="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl shadow-md transition-colors disabled:opacity-50">
+                    Login
+                </button>
+            </div>
+        </div>
+
+        <!-- Agenda View -->
+        <div id="agenda-view" class="hidden w-full flex-col bg-white dark:bg-gray-900 shadow-sm md:rounded-b-2xl md:border-x md:border-b border-gray-200 dark:border-gray-800">
+            <!-- Loader -->
+            <div id="loader" class="hidden py-10 flex justify-center">
+                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 dark:border-blue-400"></div>
+            </div>
+            <!-- Event List -->
+            <div id="events-container" class="divide-y divide-gray-100 dark:divide-gray-800/60 w-full"></div>
+        </div>
+
+    </main>
+
+    <!-- Toast Notification Container -->
+    <div id="toast-container" class="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-50 flex flex-col items-center space-y-2 w-max pointer-events-none transition-all"></div>
+
+    <script>
+        /**
+         * CONFIGURATION
+         * Updated with your specific Google Apps Script Web App URL
+         */
+        const GAS_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbzqAQbxq9PJO_XRyvIQkpBlU91185tdoFOJBb6SPyYMDMg804kZBgMeG3GiL8aV3Y4f/exec';
+
+        // DOM Elements
+        const el = {
+            html: document.documentElement,
+            themeToggle: document.getElementById('theme-toggle'),
+            updateBtn: document.getElementById('update-btn'),
+            loginView: document.getElementById('login-view'),
+            agendaView: document.getElementById('agenda-view'),
+            passwordInput: document.getElementById('password-input'),
+            togglePasswordBtn: document.getElementById('toggle-password'),
+            eyeShow: document.getElementById('eye-show'),
+            eyeHide: document.getElementById('eye-hide'),
+            loginBtn: document.getElementById('login-btn'),
+            loginError: document.getElementById('login-error'),
+            loader: document.getElementById('loader'),
+            eventsContainer: document.getElementById('events-container'),
+            toastContainer: document.getElementById('toast-container'),
+            manifestLink: document.getElementById('manifest-link')
+        };
+
+        // Inject PWA Manifest Dynamically (Bypasses the multi-file requirement for installation prompts)
+        const generatePWA = () => {
+            const manifest = {
+                name: "Agenda Widget",
+                short_name: "Agenda",
+                start_url: window.location.href,
+                display: "standalone",
+                background_color: el.html.classList.contains('dark') ? "#111827" : "#f9fafb",
+                theme_color: "#3b82f6",
+                icons:[{
+                    src: "data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%233b82f6'%3E%3Cpath d='M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10z'/%3E%3C/svg%3E",
+                    sizes: "192x192",
+                    type: "image/svg+xml"
+                }]
+            };
+            el.manifestLink.href = 'data:application/manifest+json;charset=utf-8,' + encodeURIComponent(JSON.stringify(manifest));
+        };
+
+        // Theme Management
+        const initTheme = () => {
+            const savedTheme = localStorage.getItem('theme');
+            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
+                el.html.classList.add('dark');
+            } else {
+                el.html.classList.remove('dark');
+            }
+            generatePWA(); // Update manifest colors based on theme
+        };
+        
+        el.themeToggle.addEventListener('click', () => {
+            el.html.classList.toggle('dark');
+            const isDark = el.html.classList.contains('dark');
+            localStorage.setItem('theme', isDark ? 'dark' : 'light');
+            generatePWA();
+        });
+
+        // Toast Notifications
+        const showToast = (message, type = 'info') => {
+            const toast = document.createElement('div');
+            const bg = type === 'error' ? 'bg-red-600' : type === 'success' ? 'bg-green-600' : 'bg-gray-800 dark:bg-gray-700';
+            toast.className = `px-4 py-2 rounded-full shadow-lg text-white text-sm font-medium ${bg} transform transition-all duration-300 translate-y-10 opacity-0 flex items-center`;
+            
+            // Icon
+            const icon = type === 'error' ? '⚠️ ' : type === 'success' ? '✅ ' : 'ℹ️ ';
+            toast.innerHTML = `<span>${icon}${message}</span>`;
+            
+            el.toastContainer.appendChild(toast);
+            
+            // Animate in
+            requestAnimationFrame(() => {
+                toast.classList.remove('translate-y-10', 'opacity-0');
+            });
+
+            // Animate out and remove
+            setTimeout(() => {
+                toast.classList.add('translate-y-10', 'opacity-0');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        };
+
+        // Password Input UI logic
+        el.togglePasswordBtn.addEventListener('click', () => {
+            const isPassword = el.passwordInput.type === 'password';
+            el.passwordInput.type = isPassword ? 'text' : 'password';
+            el.eyeShow.classList.toggle('hidden', !isPassword);
+            el.eyeHide.classList.toggle('hidden', isPassword);
+        });
+
+        // Enter key to login
+        el.passwordInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') attemptLogin();
+        });
+        el.loginBtn.addEventListener('click', attemptLogin);
+
+        // Core API function (Uses text/plain to avoid CORS preflight overhead)
+        const callAPI = async (action, password) => {
+            try {
+                const response = await fetch(GAS_WEB_APP_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // Prevents CORS OPTIONS block
+                    body: JSON.stringify({ action, password })
+                });
+                return await response.json();
+            } catch (error) {
+                console.error(error);
+                return { status: 'error', message: 'Network error. Offline?' };
+            }
+        };
+
+        // Login Logic
+        async function attemptLogin() {
+            const pwd = el.passwordInput.value.trim();
+            if (!pwd) return;
+
+            el.loginBtn.disabled = true;
+            el.loginBtn.innerText = 'Verifying...';
+            el.loginError.classList.add('hidden');
+
+            const res = await callAPI('verify', pwd);
+            
+            el.loginBtn.disabled = false;
+            el.loginBtn.innerText = 'Login';
+
+            if (res.status === 'success') {
+                localStorage.setItem('auth_pwd', pwd);
+                showAgendaView();
+                fetchEvents(true);
+            } else {
+                el.loginError.innerText = res.message;
+                el.loginError.classList.remove('hidden');
+            }
+        }
+
+        // View Management
+        const checkAuthStatus = () => {
+            const pwd = localStorage.getItem('auth_pwd');
+            if (pwd) {
+                showAgendaView();
+                // Load from cache first for immediate widget-like speed
+                renderEventsFromCache();
+                // Silently update in background unless triggered by update button
+                fetchEvents(false);
+            } else {
+                showLoginView();
+            }
+        };
+
+        const showLoginView = () => {
+            el.loginView.classList.remove('hidden');
+            el.agendaView.classList.add('hidden');
+            el.updateBtn.classList.add('hidden');
+        };
+
+        const showAgendaView = () => {
+            el.loginView.classList.add('hidden');
+            el.agendaView.classList.remove('hidden');
+            el.agendaView.classList.add('flex');
+            el.updateBtn.classList.remove('hidden');
+        };
+
+        // Event Fetching & Processing
+        async function fetchEvents(showLoadingUI = true) {
+            if (!navigator.onLine) {
+                showToast('You are offline. Viewing saved agenda.', 'error');
+                return;
+            }
+
+            const pwd = localStorage.getItem('auth_pwd');
+            if (!pwd) return;
+
+            if (showLoadingUI && el.eventsContainer.innerHTML === '') {
+                el.loader.classList.remove('hidden');
+            }
+
+            const res = await callAPI('get_events', pwd);
+            el.loader.classList.add('hidden');
+
+            if (res.status === 'success') {
+                localStorage.setItem('cached_events', JSON.stringify(res.data));
+                renderEvents(res.data);
+                if (showLoadingUI) showToast('App Updated', 'success');
+            } else if (res.message === 'Wrong password') {
+                localStorage.removeItem('auth_pwd');
+                showToast('Session expired. Please login again.', 'error');
+                showLoginView();
+            } else {
+                showToast(res.message, 'error');
+            }
+        }
+
+        // Update Button Binding
+        el.updateBtn.addEventListener('click', () => fetchEvents(true));
+
+        const renderEventsFromCache = () => {
+            const cached = localStorage.getItem('cached_events');
+            if (cached) renderEvents(JSON.parse(cached));
+        };
+
+        const formatTime = (timestamp, isAllDay) => {
+            if (isAllDay) return 'All Day';
+            return new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: 'numeric' }).format(new Date(timestamp));
+        };
+
+        const formatDateHeader = (timestamp) => {
+            const date = new Date(timestamp);
+            const today = new Date();
+            const tomorrow = new Date(today);
+            tomorrow.setDate(tomorrow.getDate() + 1);
+
+            const isSameDate = (d1, d2) => d1.getFullYear() === d2.getFullYear() && d1.getMonth() === d2.getMonth() && d1.getDate() === d2.getDate();
+
+            if (isSameDate(date, today)) return 'Today';
+            if (isSameDate(date, tomorrow)) return 'Tomorrow';
+            
+            return new Intl.DateTimeFormat('en-US', { weekday: 'short', month: 'short', day: 'numeric' }).format(date);
+        };
+
+        const renderEvents = (events) => {
+            el.eventsContainer.innerHTML = '';
+            
+            if (!events || events.length === 0) {
+                el.eventsContainer.innerHTML = `<div class="p-8 text-center text-gray-500 dark:text-gray-400">No events found.</div>`;
+                return;
+            }
+
+            // Sort temporally
+            events.sort((a, b) => a.startTime - b.startTime);
+
+            // Group by Date string
+            const grouped = {};
+            events.forEach(ev => {
+                const header = formatDateHeader(ev.startTime);
+                if (!grouped[header]) grouped[header] = { timestamp: ev.startTime, events: [] };
+                grouped[header].events.push(ev);
+            });
+
+            // Build UI Widget Style
+            let html = '';
+            let todayId = null;
+
+            const now = new Date().getTime();
+
+            for (const[header, data] of Object.entries(grouped)) {
+                // Keep track of the nearest upcoming header id to auto-scroll
+                const sectionId = `date-${data.timestamp}`;
+                if (!todayId && data.timestamp >= new Date().setHours(0,0,0,0)) {
+                    todayId = sectionId;
+                }
+
+                // Sticky Header
+                html += `
+                <div id="${sectionId}" class="sticky top-[60px] z-10 bg-gray-50/95 dark:bg-gray-900/95 backdrop-blur-sm px-4 py-1.5 border-y border-gray-200 dark:border-gray-800 shadow-sm transition-colors">
+                    <span class="text-xs font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">${header}</span>
+                </div>
+                <div class="flex flex-col w-full bg-white dark:bg-customBgDark transition-colors">`;
+                
+                // Event Items
+                data.events.forEach(ev => {
+                    const isPast = ev.endTime < now && !ev.isAllDay;
+                    const opacityClass = isPast ? 'opacity-50' : 'opacity-100';
+
+                    html += `
+                    <div class="flex items-start px-4 py-3.5 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors border-b last:border-0 border-gray-100 dark:border-gray-800/60 ${opacityClass}">
+                        <div class="w-20 pt-0.5 flex-shrink-0 text-sm font-medium text-gray-600 dark:text-gray-300">
+                            ${formatTime(ev.startTime, ev.isAllDay)}
+                        </div>
+                        <div class="w-1.5 h-1.5 rounded-full mt-2 mr-4 flex-shrink-0" style="background-color: ${ev.color.includes('http') || !ev.color ? '#3b82f6' : ev.color}"></div>
+                        <div class="flex-1 min-w-0">
+                            <p class="text-sm font-semibold text-gray-900 dark:text-white truncate">${ev.title}</p>
+                            ${!ev.isAllDay ? `<p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">${formatTime(ev.endTime, false)}</p>` : ''}
+                        </div>
+                    </div>`;
+                });
+                html += `</div>`;
+            }
+
+            el.eventsContainer.innerHTML = html;
+
+            // Auto-scroll to Today (or nearest upcoming date) on first render
+            if (todayId) {
+                setTimeout(() => {
+                    const target = document.getElementById(todayId);
+                    if (target) {
+                        const yOffset
