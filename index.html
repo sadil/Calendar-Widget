@@ -25,21 +25,18 @@
 </head>
 <body class="bg-customBgLight text-gray-900 dark:bg-customBgDark dark:text-gray-100 transition-colors duration-200 antialiased font-sans flex flex-col h-screen overflow-hidden">
 
-    <!-- Header (Locked height of h-16 / 64px for precise sticky snapping) -->
-    <header class="flex-none h-16 sticky top-0 z-20 backdrop-blur-md bg-white/90 dark:bg-gray-900/90 border-b border-gray-200 dark:border-gray-800 px-4 flex justify-between items-center shadow-sm w-full md:max-w-2xl mx-auto">
+    <!-- Header (Locked height of h-16 / 64px) -->
+    <header class="flex-none h-16 bg-white dark:bg-customBgDark border-b border-gray-200 dark:border-gray-800 px-4 flex justify-between items-center w-full md:max-w-2xl mx-auto z-20">
         <h1 class="text-xl font-bold tracking-tight">Agenda</h1>
         
         <!-- Action Buttons -->
         <div id="header-actions" class="flex items-center space-x-1 hidden">
-            <!-- Scroll to Today Button -->
             <button id="today-btn" class="p-2 rounded-full text-gray-500 hover:text-blue-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-gray-800 transition-colors outline-none" title="Go to Today">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
             </button>
-            <!-- Update App Button -->
             <button id="update-btn" class="p-2 rounded-full text-gray-500 hover:text-blue-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-gray-800 transition-colors outline-none" title="Update App">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
             </button>
-            <!-- Theme Toggle -->
             <button id="theme-toggle" class="p-2 text-xl rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors outline-none" title="Toggle Mode">
                 🌗
             </button>
@@ -47,6 +44,7 @@
     </header>
 
     <!-- Main Content Area (Scrollable) -->
+    <!-- This container natively starts exactly below the header, making 'top-0' the perfect sticky boundary -->
     <main class="flex-1 overflow-y-auto w-full md:max-w-2xl mx-auto relative pb-20 scroll-smooth">
         
         <!-- Login View -->
@@ -70,11 +68,9 @@
 
         <!-- Agenda View -->
         <div id="agenda-view" class="hidden w-full flex-col bg-white dark:bg-gray-900 shadow-sm md:rounded-b-2xl md:border-x md:border-b border-gray-200 dark:border-gray-800">
-            <!-- Loader -->
             <div id="loader" class="hidden py-10 flex justify-center">
                 <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 dark:border-blue-400"></div>
             </div>
-            <!-- Event List -->
             <div id="events-container" class="w-full"></div>
         </div>
 
@@ -132,7 +128,6 @@
             } else {
                 el.html.classList.remove('dark');
             }
-            // Ensure Theme toggle is always visible
             el.headerActions.classList.remove('hidden'); 
             generatePWA(); 
         };
@@ -158,15 +153,13 @@
             }, 3000);
         };
 
-        // --- Timezone Handlers (Strictly Asia/Singapore) ---
-        // Returns "YYYY-MM-DD" in SG Time for perfect daily grouping
+        // --- Timezone Handlers ---
         const getSGDateString = (timestamp) => {
             return new Intl.DateTimeFormat('en-CA', { 
                 year: 'numeric', month: '2-digit', day: '2-digit', timeZone: APP_TIMEZONE 
             }).format(new Date(timestamp));
         };
 
-        // Formats strictly to: "DDD, DD MMM YYYY" (e.g. Fri, 06 Mar 2026) in SG Time
         const formatDateHeader = (timestamp) => {
             const d = new Date(timestamp);
             const opts = { timeZone: APP_TIMEZONE };
@@ -189,39 +182,72 @@
         let inactivityTimeout;
 
         const scrollToCurrent = () => {
-            const todaySgStr = getSGDateString(Date.now());
-            const target = document.getElementById(`date-${todaySgStr}`);
-            if (target) {
-                // top-16 equates to 64px offset height
-                const yOffset = -64; 
-                const y = target.getBoundingClientRect().top + el.mainScrollArea.scrollTop + yOffset;
-                el.mainScrollArea.scrollTo({ top: y, behavior: 'smooth' });
+            const now = Date.now();
+            const todaySgStr = getSGDateString(now);
+            
+            let targetEl = document.getElementById(`date-${todaySgStr}`);
+            
+            if (targetEl) {
+                const todayEvents = document.querySelectorAll(`[data-date="${todaySgStr}"]`);
+                if (todayEvents.length > 0) {
+                    let firstUpcomingTimeBound = null;
+                    let lastTimeBound = null;
+
+                    for (let i = 0; i < todayEvents.length; i++) {
+                        const evtEl = todayEvents[i];
+                        const isAllDay = evtEl.dataset.allday === 'true';
+                        const endTime = parseInt(evtEl.dataset.endtime, 10);
+
+                        if (!isAllDay) {
+                            lastTimeBound = evtEl;
+                            if (!firstUpcomingTimeBound && endTime > now) {
+                                firstUpcomingTimeBound = evtEl;
+                            }
+                        }
+                    }
+
+                    if (firstUpcomingTimeBound) {
+                        targetEl = firstUpcomingTimeBound;
+                    } else if (lastTimeBound) {
+                        targetEl = lastTimeBound;
+                    }
+                }
+            } else {
+                const allHeaders = Array.from(document.querySelectorAll('[id^="date-"]'));
+                targetEl = allHeaders.find(h => h.id.replace('date-', '') >= todaySgStr);
+            }
+
+            if (targetEl) {
+                const mainRect = el.mainScrollArea.getBoundingClientRect();
+                const targetRect = targetEl.getBoundingClientRect();
+                
+                // If targeting an event, offset by ~34px so the sticky Date Header doesn't cover it
+                const isEvent = targetEl.hasAttribute('data-date');
+                const offset = isEvent ? -34 : 0; 
+                
+                const scrollPos = el.mainScrollArea.scrollTop + (targetRect.top - mainRect.top) + offset;
+                el.mainScrollArea.scrollTo({ top: scrollPos, behavior: 'smooth' });
             }
         };
 
-        // Detect user interactions to pause widget auto-scrolling
         el.mainScrollArea.addEventListener('scroll', () => {
             isUserScrolling = true;
             clearTimeout(inactivityTimeout);
             
-            // If unattended for 30 seconds, automatically snap back to today (Widget behavior)
             inactivityTimeout = setTimeout(() => {
                 isUserScrolling = false;
                 scrollToCurrent();
             }, 30000); 
         }, { passive: true });
 
-        // Unattended checking loop (Checks every 60s in background to keep date updated)
         setInterval(() => {
             if (!isUserScrolling) {
                 scrollToCurrent();
-                // Optionally silently refetch every hour or so, but visually snapping to today is the goal.
             }
         }, 60000);
 
-        // Header Buttons Binding
         el.todayBtn.addEventListener('click', () => {
-            isUserScrolling = false; // Reset lock
+            isUserScrolling = false;
             scrollToCurrent();
         });
         el.updateBtn.addEventListener('click', () => fetchEvents(true));
@@ -344,10 +370,6 @@
                 return;
             }
 
-            // Sort temporally globally
-            events.sort((a, b) => a.startTime - b.startTime);
-
-            // Group strictly by SG Date String
             const grouped = {};
             events.forEach(ev => {
                 const dateKey = getSGDateString(ev.startTime);
@@ -360,7 +382,6 @@
                 grouped[dateKey].events.push(ev);
             });
 
-            // Iterate through sorted dates
             let html = '';
             const now = Date.now();
             const sortedDates = Object.keys(grouped).sort();
@@ -369,11 +390,18 @@
                 const data = grouped[dateKey];
                 const sectionId = `date-${dateKey}`;
 
-                // Notice the top-16 class matches the header h-16 height perfectly.
-                // Using indigo specific colors to differentiate the frozen date text/background
+                data.events.sort((a, b) => {
+                    if (a.isAllDay !== b.isAllDay) {
+                        return a.isAllDay ? 1 : -1;
+                    }
+                    return a.startTime - b.startTime;
+                });
+
+                // Top-0 creates perfectly flush sticky positioning inside the scrollable container.
+                // Solid, minimal background to prevent overlap bleed and "glow".
                 html += `
-                <div id="${sectionId}" class="sticky top-16 z-10 bg-indigo-50/95 dark:bg-indigo-900/40 backdrop-blur-sm px-4 py-2 border-y border-indigo-100 dark:border-indigo-800/50 shadow-sm transition-colors">
-                    <span class="text-xs font-bold uppercase tracking-widest text-indigo-700 dark:text-indigo-300">${data.headerStr}</span>
+                <div id="${sectionId}" class="sticky top-0 z-10 bg-gray-100 dark:bg-gray-800 px-4 py-1.5 border-b border-gray-200 dark:border-gray-700 transition-colors">
+                    <span class="text-xs font-bold uppercase tracking-widest text-blue-600 dark:text-blue-400">${data.headerStr}</span>
                 </div>
                 <div class="flex flex-col w-full bg-white dark:bg-customBgDark transition-colors">`;
                 
@@ -386,7 +414,11 @@
                         : `Until ${formatTime(ev.endTime, false)} <span class="mx-1.5">&bull;</span> ${ev.calendarName}`;
 
                     html += `
-                    <div class="flex items-start px-4 py-3.5 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors border-b last:border-0 border-gray-100 dark:border-gray-800/60 ${opacityClass}">
+                    <div class="flex items-start px-4 py-3.5 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors border-b last:border-0 border-gray-100 dark:border-gray-800/60 ${opacityClass}"
+                         data-date="${dateKey}"
+                         data-allday="${ev.isAllDay}"
+                         data-endtime="${ev.endTime}">
+                        
                         <div class="w-20 pt-0.5 flex-shrink-0 text-sm font-medium text-gray-600 dark:text-gray-300">
                             ${formatTime(ev.startTime, ev.isAllDay)}
                         </div>
@@ -402,10 +434,7 @@
 
             el.eventsContainer.innerHTML = html;
 
-            // Wait a brief moment to allow DOM to paint, then Auto-scroll to today
-            setTimeout(() => {
-                scrollToCurrent();
-            }, 100);
+            setTimeout(() => scrollToCurrent(), 100);
         };
 
         // Initialize App
