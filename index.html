@@ -369,4 +369,17 @@
                 setTimeout(() => {
                     const target = document.getElementById(todayId);
                     if (target) {
-                        const yOffset
+                        const yOffset = -60; // Offset for sticky header
+                        const y = target.getBoundingClientRect().top + window.scrollY + yOffset;
+                        window.scrollTo({ top: y, behavior: 'smooth' });
+                    }
+                }, 100);
+            }
+        };
+
+        // Initialize App Setup
+        initTheme();
+        checkAuthStatus();
+    </script>
+</body>
+</html>
